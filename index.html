@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Growth System Audit</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #020617; color: #f1f5f9; margin: 0; padding: 0; }
+        .selection-fuchsia::selection { background-color: #d946ef; color: white; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade-in { animation: fadeIn 0.5s ease-out forwards; }
+    </style>
+</head>
+<body class="selection-fuchsia">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // --- CONFIGURATION ---
+        const MAKE_WEBHOOK_URL = "YOUR_MAKE_WEBHOOK_HERE"; // Replace with your Make.com webhook
+        const KIT_LINK = "https://yourlink.com/ai-kit-checkout";
+
+        // Internal SVG Icon Library for maximum stability without external component dependencies
+        const Icons = {
+            Target: ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>,
+            Megaphone: ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>,
+            Zap: ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>,
+            Sparkles: ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M19 17v4"/><path d="M3 5h4"/><path d="M17 19h4"/></svg>,
+            Layers: ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m2.6 10.15 8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9"/><path d="m2.6 14.25 8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9"/></svg>,
+            ArrowRight: ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>,
+            ArrowLeft: ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>,
+            ChevronRight: ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>,
+            BarChart3: ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>,
+            Rocket: ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-5c1.62-2.2 5-3 5-3"/><path d="M12 15v5s3.03-.55 5-2c2.2-1.62 3-5 3-5"/></svg>,
+            Activity: ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>,
+            Wrench: ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>,
+            CheckCircle2: ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="m9 12 2 2 4-4"/></svg>,
+            User: ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,
+            Mail: ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>,
+            ArrowUpRight: ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M7 17L17 7"/><path d="M7 7h10v10"/></svg>,
+            Loader2: ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+        };
+
+        const Icon = ({ name, className }) => {
+            const SvgComponent = Icons[name];
+            return SvgComponent ? <SvgComponent className={className} /> : null;
+        };
+
+        const PILLARS = {
+            "Clarity & Strategy": {
+                id: "strategy", color: "blue", icon: "Target",
+                questions: [
+                    { id: "p1", label: "Positioning & ICP Clarity", options: [{ text: "Struggle to define niche/ICP; generic messaging.", score: 1 }, { text: "Rough idea, but not documented or consistent.", score: 2 }, { text: "Documented, narrow ICP and clear positioning.", score: 3 }] },
+                    { id: "p2", label: "Market & Competitor Insight", options: [{ text: "Rarely research competitors; react late to changes.", score: 1 }, { text: "Occasional checks, but no consistent system.", score: 2 }, { text: "System tracks competitors/trends regularly.", score: 3 }] },
+                    { id: "p3", label: "Offer & Packaging Structure", options: [{ text: "Nearly every project is custom; our offers are unclear.", score: 1 }, { text: "Some packages, but not fully productized.", score: 2 }, { text: "Clear offer stack with productized services.", score: 3 }] },
+                    { id: "p4", label: "Documented Strategy & Focus", options: [{ text: "Our strategy lives in the founder’s head.", score: 1 }, { text: "We have some goals written, but they are fragmented.", score: 2 }, { text: "Simple, documented strategy guides priorities.", score: 3 }] },
+                    { id: "p5", label: "Brand & Business Goal Alignment", options: [{ text: "Our brand feels disconnected from revenue targets.", score: 1 }, { text: "We try to align brand and goals but lack clear KPIs.", score: 2 }, { text: "Our brand and messaging are tightly linked to business outcomes.", score: 3 }] }
+                ]
+            },
+            "Content & Visibility": {
+                id: "visibility", color: "indigo", icon: "Megaphone",
+                questions: [
+                    { id: "p6", label: "Content Consistency & Cadence", options: [{ text: "Sporadic publishing; channels go silent.", score: 1 }, { text: "Somewhat regular, but no reliable schedule.", score: 2 }, { text: "Consistent planned cadence with calendar.", score: 3 }] },
+                    { id: "p7", label: "Content Workflow & Process", options: [{ text: "Created from scratch; no standardized steps.", score: 1 }, { text: "Some templates/steps, but still manual.", score: 2 }, { text: "Repeatable workflow the whole team follows.", score: 3 }] },
+                    { id: "p8", label: "Content-to-Revenue Connection", options: [{ text: "Mostly educational; rarely leads to sales.", score: 1 }, { text: "Some leads, but posts don't clearly guide.", score: 2 }, { text: "Intentionally designed to move into pipeline.", score: 3 }] },
+                    { id: "p9", label: "Omnichannel Repurposing", options: [{ text: "Only on 1-2 platforms; struggle for visibility.", score: 1 }, { text: "Cross-post manually; time-intensive.", score: 2 }, { text: "One core asset repurposed via clear system.", score: 3 }] },
+                    { id: "p10", label: "Measuring Performance & ROI", options: [{ text: "Don’t track performance beyond likes.", score: 1 }, { text: "Some metrics, but not linked to sales data.", score: 2 }, { text: "Track topics/formats that drive revenue.", score: 3 }] }
+                ]
+            },
+            "Sales & Pipeline": {
+                id: "sales", color: "fuchsia", icon: "Zap",
+                questions: [
+                    { id: "p11", label: "Lead Capture & Organization", options: [{ text: "Leads scattered in email, DMs, spreadsheets.", score: 1 }, { text: "Basic list, but data is often incomplete.", score: 2 }, { text: "Central, up-to-date place for all leads.", score: 3 }] },
+                    { id: "p12", label: "Follow-Up Consistency", options: [{ text: "Often forget or follow up much later.", score: 1 }, { text: "Manual/inconsistent individual discipline.", score: 2 }, { text: "Clear follow-up rhythm and system in place.", score: 3 }] },
+                    { id: "p13", label: "Pipeline Stages & Qualification", options: [{ text: "No defined stages or clear criteria.", score: 1 }, { text: "Rough stages used inconsistently.", score: 2 }, { text: "Clear shared stages/qualification criteria.", score: 3 }] },
+                    { id: "p14", label: "Proposal Standardization", options: [{ text: "Each built from scratch; inconsistent pricing.", score: 1 }, { text: "Reuse elements, but much manual editing.", score: 2 }, { text: "Standard templates make creation fast.", score: 3 }] },
+                    { id: "p15", label: "CRM & Sales Tool Adoption", options: [{ text: "No CRM or one that nobody updates.", score: 1 }, { text: "Use CRM, but data is spotty/incomplete.", score: 2 }, { text: "CRM is the single source of truth.", score: 3 }] }
+                ]
+            },
+            "Client Concierge": {
+                id: "concierge", color: "amber", icon: "Sparkles",
+                questions: [
+                    { id: "p16", label: "Client Onboarding Structure", options: [{ text: "Feels chaotic and improvised from scratch.", score: 1 }, { text: "Basic checklist, but manually triggered.", score: 2 }, { text: "Repeatable onboarding starts automatically.", score: 3 }] },
+                    { id: "p17", label: "Onboarding Clarity & Expectations", options: [{ text: "Clients unsure of next steps or success.", score: 1 }, { text: "Expectations explained verbally only.", score: 2 }, { text: "Written scope/timelines/metrics upfront.", score: 3 }] },
+                    { id: "p18", label: "Documentation Collection", options: [{ text: "Slow/manual across email and chats.", score: 1 }, { text: "Some templates, but still chase manually.", score: 2 }, { text: "Streamlined process for everything needed.", score: 3 }] },
+                    { id: "p19", label: "Self-Serve Portal", options: [{ text: "Must message/email for every update.", score: 1 }, { text: "Static FAQ, but basic questions still sent.", score: 2 }, { text: "Hub/portal for info, FAQs, and status.", score: 3 }] },
+                    { id: "p20", label: "Proactive Client Success", options: [{ text: "Only hear from us when there's a problem.", score: 1 }, { text: "Schedule check-ins, but they are irregular.", score: 2 }, { text: "Routine progress updates help see wins.", score: 3 }] }
+                ]
+            },
+            "Ops & Admin": {
+                id: "ops", color: "emerald", icon: "Layers",
+                questions: [
+                    { id: "p21", label: "Process Documentation & SOPs", options: [{ text: "Processes in heads; few written SOPs.", score: 1 }, { text: "Some documented, some tribal knowledge.", score: 2 }, { text: "Core workflows in simple, usable SOPs.", score: 3 }] },
+                    { id: "p22", label: "Tool Integration & Data Silos", options: [{ text: "Tools disconnected; constant copy-paste.", score: 1 }, { text: "Few tools connected; manual gaps.", score: 2 }, { text: "Tools share data smoothly/automatically.", score: 3 }] },
+                    { id: "p23", label: "Manual Admin tasks", options: [{ text: "Handle invoicing/reminders manually.", score: 1 }, { text: "Semi-automated, but still significant work.", score: 2 }, { text: "Tasks run with zero/minimal human input.", score: 3 }] },
+                    { id: "p24", label: "Standardization Before AI", options: [{ text: "Everyone does same task differently.", score: 1 }, { text: "Trying to standardize; still inconsistent.", score: 2 }, { text: "Agreed standard ways of doing tasks.", score: 3 }] },
+                    { id: "p25", label: "Internal Knowledge Transfer", options: [{ text: "Bringing people up to speed is slow.", score: 1 }, { text: "Share some docs/recordings; scattered.", score: 2 }, { text: "Simple onboarding path with resources.", score: 3 }] },
+                    { id: "p26", label: "Leadership Time Management", options: [{ text: "Day starts reactively in the inbox.", score: 1 }, { text: "Calendar/lists exist; planning feels messy.", score: 2 }, { text: "Prioritized agenda protects strategic work.", score: 3 }] },
+                    { id: "p27", label: "Employee Onboarding Experience", options: [{ text: "New hires get minimal structure.", score: 1 }, { text: "Some onboarding docs, but process varies.", score: 2 }, { text: "New hires follow a clear plan with milestones.", score: 3 }] }
+                ]
+            }
+        };
+
+        function App() {
+            const [step, setStep] = useState('welcome');
+            const [pillarIdx, setPillarIdx] = useState(0);
+            const [questionIdx, setQuestionIdx] = useState(0);
+            const [answers, setAnswers] = useState({});
+            const [contactInfo, setContactInfo] = useState({ name: '', email: '' });
+            const [emailTouched, setEmailTouched] = useState(false);
+            const [resultsData, setResultsData] = useState(null);
+
+            const pillarKeys = Object.keys(PILLARS);
+            const currentPillarKey = pillarKeys[pillarIdx];
+            const currentPillar = PILLARS[currentPillarKey];
+            const currentQuestions = currentPillar.questions;
+            const currentQId = currentQuestions[questionIdx].id;
+
+            const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+            const isContactStepValid = contactInfo.name.trim().length > 1 && isValidEmail(contactInfo.email);
+
+            const getProgress = () => {
+                if (step === 'welcome') return 0;
+                if (step === 'contact') return 10;
+                if (step === 'questions') {
+                    const totalQuestions = 27;
+                    let questionsDone = 0;
+                    for (let i = 0; i < pillarIdx; i++) questionsDone += PILLARS[pillarKeys[i]].questions.length;
+                    questionsDone += (questionIdx + 1);
+                    return 10 + ((questionsDone / totalQuestions) * 85);
+                }
+                return 100;
+            };
+
+            const processResults = async (finalAnswers) => {
+                setStep('submitting');
+                
+                const pillarFriction = {};
+                pillarKeys.forEach(key => {
+                    const pillarAnswers = Object.values(finalAnswers).filter(a => a.pillar === key);
+                    const maturity = Math.round((pillarAnswers.reduce((acc, curr) => acc + curr.score, 0) / (pillarAnswers.length * 3)) * 100);
+                    pillarFriction[key] = 100 - maturity;
+                });
+
+                let biggestBlocker = null;
+                let highestFriction = -1;
+                pillarKeys.forEach(key => {
+                    if (pillarFriction[key] >= 40 && pillarFriction[key] > highestFriction) {
+                        highestFriction = pillarFriction[key];
+                        biggestBlocker = key;
+                    }
+                });
+                if (!biggestBlocker) biggestBlocker = pillarKeys.reduce((a, b) => pillarFriction[a] >= pillarFriction[b] ? a : b);
+
+                const problematicAnswers = Object.values(finalAnswers)
+                    .filter(a => a.pillar === biggestBlocker && a.score <= 2)
+                    .map(a => a.text);
+
+                const problemDescription = problematicAnswers.length > 0 
+                    ? `Based on your audit, your primary bottlenecks are: ${problematicAnswers.join(" ")}`
+                    : "Your current systems are reaching their limit and causing significant friction in your growth.";
+
+                const cureMap = {
+                    "Clarity & Strategy": "You are guessing your next move instead of using data. AI can track your competitors and market trends for you. This saves you 7 hours a week. That is worth $1,100 a month and helps you build a winning plan without the guesswork. Get a custom AI tool to help you build it! You will get the exact step-by-step plan help you do competitive research, find your best positioning, and fix your brand and growth plan. Build a step-by-step plan that saves you time and grows your sales.",
+                    "Content & Visibility": "AI helps you get ideas and create posts 10 hours faster every week. This helps more people find your brand without burning out your team. Get a custom AI tool to help you build it! You will get the exact step-by-step plan to help you get on-brand content ideas, create content in multiple formats, and turn one idea into posts for all platforms without losing your brand voice. Build a step-by-step plan that saves you time and grows your sales.",
+                    "Sales & Pipeline": "Your sales process is too slow. AI saves each sales rep 6 hours a week. It writes proposals and answers tough questions instantly so they can close more deals. Get a custom AI tool to help you build it! You will get the exact step-by-step plan to help you build a system to track every lead and close more sales on autopilot. Build a step-by-step plan that saves you time and grows your sales.",
+                    "Client Concierge": "Your team is too busy with support tickets. AI can save you 15 hours a week. It answers common questions and welcomes new clients while you sleep. This is worth $2,000 a month. Get a custom AI tool to help you build it! You will get the exact step-by-step plan to help you create a self-serve home that welcomes them perfectly every time. Build a step-by-step plan that saves you time and make your clients become happy, repeat customers.",
+                    "Ops & Admin": "Fixing your manual work pays off the most. AI saves you 20 hours a week by doing the boring paperwork for you. That is worth $3,000 a month to your business. Get a custom AI tool to help you build it! You will get the exact step-by-step plan that helps you connect your apps so the work gets done faster and more efficiently. Build a step-by-step plan that saves you time so you can focus on sales."
+                };
+
+                const results = { pillarFriction, biggestBlocker, problemDescription, solutionText: cureMap[biggestBlocker] };
+                setResultsData(results);
+
+                if (MAKE_WEBHOOK_URL !== "YOUR_MAKE_WEBHOOK_HERE") {
+                    try {
+                        await fetch(MAKE_WEBHOOK_URL, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ ...contactInfo, ...results, timestamp: new Date().toISOString() })
+                        });
+                    } catch (e) { console.error("Webhook failed", e); }
+                }
+
+                setTimeout(() => setStep('results'), 2000);
+            };
+
+            const renderWelcome = () => (
+                <div className="max-w-md w-full space-y-10 text-center animate-fade-in">
+                    <div className="flex justify-center">
+                        <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-purple-600 to-blue-500 flex items-center justify-center shadow-lg shadow-purple-500/20">
+                            <Icon name="BarChart3" className="w-8 h-8 text-white" />
+                        </div>
+                    </div>
+                    <div className="space-y-4">
+                        <h1 className="text-3xl md:text-4xl font-black tracking-tight text-white leading-tight uppercase px-4">AI Growth System Audit</h1>
+                        <p className="text-slate-400 text-sm md:text-base leading-relaxed max-w-sm mx-auto font-medium px-4">Identify your biggest growth blockers. Learn exactly how to fix them with simple AI and automation.</p>
+                    </div>
+                    <div className="px-6 w-full">
+                        <button onClick={() => setStep('contact')} className="w-full bg-purple-600 text-white px-8 py-4 rounded-xl font-bold text-sm shadow-xl shadow-purple-600/20 active:scale-95 transition-all flex items-center justify-center gap-2">
+                            Find Your Biggest Growth Blocker <Icon name="ArrowRight" className="w-4 h-4" />
+                        </button>
+                    </div>
+                </div>
+            );
+
+            const renderContact = () => (
+                <div className="w-full max-w-xl space-y-8 animate-fade-in px-6">
+                    <div className="space-y-2 text-center md:text-left">
+                        <h2 className="text-xl md:text-2xl font-bold text-white tracking-tight uppercase tracking-widest">Audit Subject</h2>
+                        <p className="text-slate-400 text-sm">Tell us where to send your results.</p>
+                    </div>
+                    <div className="space-y-5">
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] uppercase tracking-widest font-black text-slate-500">Full Name</label>
+                            <div className="relative">
+                                <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center"><Icon name="User" className="w-4 h-4 text-slate-600" /></div>
+                                <input type="text" className="w-full bg-slate-900/50 border border-slate-800 rounded-xl py-3.5 pl-10 pr-4 focus:border-purple-500 outline-none text-sm transition-all text-white" placeholder="Your Name" value={contactInfo.name} onChange={e => setContactInfo({...contactInfo, name: e.target.value})} />
+                            </div>
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] uppercase tracking-widest font-black text-slate-500">Work Email</label>
+                            <div className="relative">
+                                <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center"><Icon name="Mail" className="w-4 h-4 text-slate-600" /></div>
+                                <input 
+                                    type="email" 
+                                    className={`w-full bg-slate-900/50 border rounded-xl py-3.5 pl-10 pr-4 outline-none transition-all text-sm text-white ${emailTouched && contactInfo.email && !isValidEmail(contactInfo.email) ? 'border-fuchsia-500' : 'border-slate-800 focus:border-purple-500'}`} 
+                                    placeholder="email@company.com" 
+                                    value={contactInfo.email} 
+                                    onChange={e => setContactInfo({...contactInfo, email: e.target.value})}
+                                    onBlur={() => setEmailTouched(true)}
+                                />
+                            </div>
+                            {emailTouched && contactInfo.email && !isValidEmail(contactInfo.email) && <p className="text-[10px] text-fuchsia-500 font-bold uppercase tracking-wide mt-1">Please enter a valid email address</p>}
+                        </div>
+                    </div>
+                    <button disabled={!isContactStepValid} onClick={() => setStep('questions')} className="w-full bg-purple-600 text-white px-6 py-3.5 rounded-xl font-bold text-sm disabled:opacity-20 flex items-center justify-center gap-2 active:scale-95 transition-all">
+                        Begin Audit <Icon name="ChevronRight" className="w-4 h-4" />
+                    </button>
+                </div>
+            );
+
+            const renderQuestions = () => (
+                <div className="w-full max-w-xl space-y-8 animate-fade-in px-6">
+                    <div className="space-y-4">
+                        <div className="flex items-center gap-2">
+                            <div className={`p-1.5 bg-slate-800 rounded-md text-${currentPillar.color}-400`}>
+                                <Icon name={currentPillar.icon} className="w-4 h-4" />
+                            </div>
+                            <div className="text-[10px] uppercase tracking-[0.2em] font-black text-slate-500">
+                                {currentPillarKey} • Step {questionIdx + 1}/{currentQuestions.length}
+                            </div>
+                        </div>
+                        <h2 className="text-xl md:text-2xl font-bold text-white leading-tight">{currentQuestions[questionIdx].label}</h2>
+                    </div>
+                    <div className="grid gap-3">
+                        {currentQuestions[questionIdx].options.map((opt, i) => {
+                            const isSelected = answers[currentQId]?.text === opt.text;
+                            return (
+                                <button key={i} onClick={() => setAnswers({...answers, [currentQId]: { score: opt.score, text: opt.text, pillar: currentPillarKey }})} className={`group w-full p-4 md:p-5 text-left transition-all flex items-start gap-4 cursor-pointer rounded-xl border ${isSelected ? 'bg-purple-900/20 border-purple-500 shadow-[0_0_15px_rgba(168,85,247,0.1)]' : 'bg-slate-900/30 border-slate-800'}`}>
+                                    <div className={`w-5 h-5 rounded-full border mt-0.5 flex items-center justify-center shrink-0 transition-colors ${isSelected ? 'border-purple-400' : 'border-slate-700'}`}>
+                                        {isSelected && <div className="w-2.5 h-2.5 rounded-full bg-purple-500" />}
+                                    </div>
+                                    <span className={`text-sm leading-relaxed ${isSelected ? 'text-slate-100 font-medium' : 'text-slate-400'}`}>{opt.text}</span>
+                                </button>
+                            );
+                        })}
+                    </div>
+                    <div className="pt-8 border-t border-slate-900 flex items-center justify-between gap-4">
+                        <button onClick={() => { if (questionIdx > 0) setQuestionIdx(v => v - 1); else if (pillarIdx > 0) { setPillarIdx(p => p - 1); setQuestionIdx(PILLARS[pillarKeys[pillarIdx-1]].questions.length - 1); } else setStep('contact'); }} className="text-[10px] uppercase tracking-widest font-black text-slate-600 flex items-center gap-2"><Icon name="ArrowLeft" className="w-3.5 h-3.5" /> Back</button>
+                        <button disabled={!answers[currentQId]} onClick={() => { if (questionIdx < currentQuestions.length - 1) setQuestionIdx(prev => prev + 1); else if (pillarIdx < pillarKeys.length - 1) { setPillarIdx(prev => prev + 1); setQuestionIdx(0); } else processResults(answers); }} className="bg-fuchsia-600 text-white px-5 py-2.5 rounded-lg font-black uppercase text-[10px] tracking-widest disabled:opacity-20 flex items-center gap-2 active:scale-95 transition-all">
+                            {pillarIdx === pillarKeys.length - 1 && questionIdx === currentQuestions.length - 1 ? "Get My Report" : "Next"} <Icon name="ArrowRight" className="w-3.5 h-3.5" />
+                        </button>
+                    </div>
+                </div>
+            );
+
+            const renderResults = () => (
+                <div className="w-full max-w-2xl space-y-6 md:space-y-8 animate-fade-in pb-12 px-6">
+                    <div className="flex items-center justify-between">
+                        <div className="w-12 h-12 rounded-full bg-fuchsia-500/10 flex items-center justify-center text-fuchsia-500 shrink-0"><Icon name="Activity" className="w-6 h-6" /></div>
+                        <div className="px-3 py-1.5 rounded-full bg-slate-900 border border-slate-800 text-[9px] md:text-[10px] font-black uppercase tracking-widest text-slate-400">Audit Complete</div>
+                    </div>
+                    <h2 className="text-2xl md:text-3xl font-black text-white uppercase tracking-tight text-center md:text-left">Your growth scan is done.</h2>
+
+                    <div className="bg-slate-900/60 border border-slate-800 rounded-3xl overflow-hidden flex flex-col md:grid md:grid-cols-2 shadow-2xl">
+                        <div className="p-6 md:p-8 space-y-6 border-b md:border-b-0 md:border-r border-slate-800">
+                            <div className="space-y-1">
+                                <div className="flex items-center gap-2 mb-2"><Icon name="Rocket" className="w-4 h-4 text-fuchsia-400" /><h4 className="font-bold uppercase tracking-widest text-[10px] text-slate-400">Main Growth Block</h4></div>
+                                <p className="text-2xl md:text-3xl font-bold text-white tracking-tight">{resultsData.biggestBlocker}</p>
+                                <p className="text-fuchsia-400 text-lg md:text-xl font-black uppercase tracking-widest">{resultsData.pillarFriction[resultsData.biggestBlocker]}% Block</p>
+                            </div>
+                            <p className="text-sm text-slate-300 leading-relaxed font-medium bg-slate-900/40 p-4 rounded-xl border border-slate-800/50">
+                                {resultsData.problemDescription} This is the wall you keep hitting when you try to grow.
+                            </p>
+                        </div>
+                        <div className="p-6 md:p-8 flex flex-col gap-4 justify-center bg-slate-900/20">
+                            <p className="text-[10px] uppercase tracking-widest font-black text-slate-500 mb-2">Pillar Comparison</p>
+                            {Object.entries(resultsData.pillarFriction).map(([name, score]) => (
+                                <div key={name} className="space-y-1.5 w-full">
+                                    <div className="flex justify-between text-[9px] uppercase font-bold tracking-widest text-slate-500">
+                                        <span className="truncate pr-4">{name}</span>
+                                        <span className={name === resultsData.biggestBlocker ? "text-fuchsia-400" : ""}>{score}%</span>
+                                    </div>
+                                    <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
+                                        <div className={`h-full rounded-full transition-all duration-1000 ${name === resultsData.biggestBlocker ? "bg-fuchsia-500" : "bg-slate-600"}`} style={{ width: `${score}%` }} />
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="p-6 md:p-8 bg-gradient-to-br from-purple-900/20 to-blue-900/20 border border-purple-500/30 rounded-3xl space-y-6 shadow-2xl">
+                        <div className="flex items-center gap-3"><Icon name="Wrench" className="w-4 h-4 text-purple-400" /><h4 className="font-bold uppercase tracking-widest text-[10px] text-purple-400">The Recommended Fix</h4></div>
+                        <div className="space-y-4">
+                            <h5 className="text-xl md:text-2xl font-bold text-white leading-tight uppercase">Custom 30-Day Roadmap to Fix Your {resultsData.biggestBlocker}</h5>
+                            <p className="text-sm text-slate-300 leading-relaxed font-medium">{resultsData.solutionText}</p>
+                        </div>
+                        <div className="space-y-4">
+                            <p className="text-[10px] uppercase tracking-widest font-black text-slate-500">Your roadmap includes:</p>
+                            <div className="grid gap-4">
+                                {["Priority order", "Week-by-week plan", "System suggestions", "Tool list", "Expected results"].map((item, i) => (
+                                    <div key={i} className="flex gap-3 items-start">
+                                        <div className="shrink-0 mt-0.5"><Icon name="CheckCircle2" className="w-4 h-4 text-emerald-400" /></div>
+                                        <div className="text-xs text-slate-300"><span className="font-bold text-white uppercase tracking-wide mr-1">{item}:</span> Ready-to-implement steps created for your specific model.</div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                        <div className="pt-4 w-full">
+                            <a href={KIT_LINK} target="_blank" className="w-full bg-white text-black py-4 px-6 rounded-2xl font-black uppercase text-xs tracking-widest flex items-center justify-center gap-3 active:scale-95 transition-all shadow-xl shadow-white/5 no-underline">
+                                Get Access Now — €9 <Icon name="ArrowUpRight" className="w-4 h-4" />
+                            </a>
+                        </div>
+                        <p className="text-[9px] text-slate-500 text-center uppercase tracking-widest font-black pt-2">100% Secure Payments • Lifetime Access • Powered by AI</p>
+                    </div>
+                    <div className="text-center space-y-4 pt-4">
+                        <p className="text-slate-500 text-[10px] uppercase tracking-widest font-bold">A full copy of your results was sent to {contactInfo.email}.</p>
+                        <button onClick={() => window.location.reload()} className="text-[10px] uppercase tracking-widest font-black text-slate-700 underline p-2 active:text-white transition-colors">Start New Audit</button>
+                    </div>
+                </div>
+            );
+
+            return (
+                <div className="min-h-screen w-full flex flex-col items-center justify-center relative overflow-x-hidden">
+                    <div className="w-full fixed top-0 left-0 z-50"><div className="h-1 bg-gradient-to-r from-purple-600 to-blue-500 transition-all duration-700 shadow-[0_0_10px_rgba(168,85,247,0.5)]" style={{ width: `${getProgress()}%` }} /></div>
+                    <main className="flex-1 flex items-center justify-center w-full py-12 md:py-20">
+                        {step === 'welcome' && renderWelcome()}
+                        {step === 'contact' && renderContact()}
+                        {step === 'questions' && renderQuestions()}
+                        {step === 'submitting' && (
+                            <div className="text-center space-y-6 px-6">
+                                <div className="flex justify-center"><Icon name="Loader2" className="w-12 h-12 text-purple-500 animate-spin" /></div>
+                                <p className="text-[10px] uppercase tracking-[0.4em] font-black text-slate-500 animate-pulse">Calculating Growth Potential...</p>
+                            </div>
+                        )}
+                        {step === 'results' && renderResults()}
+                    </main>
+                    <footer className="w-full py-10 border-t border-slate-900/30 text-center px-4 bg-slate-950/20">
+                        <div className="text-[9px] uppercase tracking-[0.4em] font-black text-slate-700 leading-relaxed max-w-xs mx-auto">Precision Growth Engine © {new Date().getFullYear()}</div>
+                    </footer>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
